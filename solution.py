@@ -43,17 +43,38 @@ def naked_twins(values):
         the values dictionary with the naked twins eliminated from peers.
     """
 
-    for unit in units:
-        rev_multidict = {}
-        for key, value in unit.items():
-            rev_multidict.setdefault(value, set()).add(key)
-        twins  = set(chain.from_iterable(values for key, values in rev_multidict.items() if len(values) > 1))
-        print(twins)
+    # 1. Iterate over all units
+    for unit in unitlist:
+        # 2. For each box in unit
+        for u in unit:
+            curr_value = values[u]
+            # Naked twins only works for twins, so we skip values that are not a pair
+            if len(curr_value) != 2:
+                continue
+            has_naked_twin = False
 
-        # [values for key, values in rev_multidict.items() if len(values) > 1]
+            # See if any other box in the same unit shares the same set of possible values
+            for uu in unit:
+                # Skip the unit for which we're looking for twins
+                if u == uu:
+                    continue
+                val = values[uu]
+                if val == curr_value:
+                    has_naked_twin = True
 
-    # Find all instances of naked twins
-    # Eliminate the naked twins as possibilities for their peers
+            # 3. If two or more boxes in the same unit shares the same set of possible values =>
+            if has_naked_twin:
+                # Remove each possible value from the possible values of all other boxes in the same unit
+                for uu in unit:
+                    val = values[uu]
+                    # Only prune values, from a box that is not a naked twin
+                    if val != curr_value:
+                        for v in curr_value:
+                            if v in val:
+                                val = val.replace(v, "")
+                        values[uu] = val
+
+    return values
 
 
 def grid_values(grid):
@@ -159,7 +180,6 @@ def search(values):
         if attempt:
             return attempt
 
-
 def solve(grid):
     """
     Find the solution to a Sudoku grid.
@@ -169,6 +189,8 @@ def solve(grid):
     Returns:
         The dictionary representation of the final sudoku grid. False if no solution exists.
     """
+    values = grid_values(grid)
+    return search(values)
 
 
 if __name__ == '__main__':
