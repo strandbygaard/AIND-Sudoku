@@ -3,11 +3,32 @@
 
 # Question 1 (Naked Twins)
 Q: How do we use constraint propagation to solve the naked twins problem?  
-A: *Student should provide answer here*
+A: We propagate the naked twins constraint in the same way the constraint is propagated for e.g. the 'only choice' case by iterating the boxes in each unit, and pruning the list of possible values for each box according to the naked twins constraint.
+
+The constraint has been implemented using the following algorithm:
+
+1. Iterate over all units
+    1. For each box in a unit
+        1. See if any other box in the same unit shares the same set of possible values
+        2. If two boxes in the same unit share the same set of possible values
+            1. Remove each possible value of the naked twin pair from the list of possible values of all other boxes in the same unit that are not a naked twin
+
+
+
+
+ 
+
+
 
 # Question 2 (Diagonal Sudoku)
 Q: How do we use constraint propagation to solve the diagonal sudoku problem?  
-A: *Student should provide answer here*
+A: In the standard implementation, the code looks at row- and column units, as well as square units. 
+
+We can extend this implementation to also solve for the constraint about diagonal units, by simply extending the list of units to also include the two possible diagonal units:
+```angular2html
+['A1', 'B2', 'C3', 'D4', 'E5', 'F6', 'G7', 'H8', 'I9']
+['I1', 'H2', 'G3', 'F4', 'E5', 'D6', 'C7', 'B8', 'A9']
+```
 
 ### Install
 

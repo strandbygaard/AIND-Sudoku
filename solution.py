@@ -1,11 +1,9 @@
-from itertools import chain
-
 assignments = []
 
 
 def cross(A, B):
     "Cross product of elements in A and elements in B."
-    return [s+t for s in A for t in B]
+    return [s + t for s in A for t in B]
 
 
 rows = 'ABCDEFGHI'
@@ -13,10 +11,19 @@ cols = '123456789'
 boxes = cross(rows, cols)
 row_units = [cross(r, cols) for r in rows]
 column_units = [cross(rows, c) for c in cols]
-square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','456','789')]
-unitlist = row_units + column_units + square_units
+square_units = [cross(rs, cs) for rs in ('ABC', 'DEF', 'GHI') for cs in ('123', '456', '789')]
+
+# This is builds the diagonal unit A1,B2,C3...,I9
+diag_unit1 = [rows[i] + cols[i] for i in range(len(rows))]
+# This is builds the diagonal unit I1,H2,G3...,A9. Note the reversed order of the rows-string
+diag_unit2 = [rows[::-1][i] + cols[i] for i in range(len(rows))]
+# Create a list of diagonal units
+diag_unit = [diag_unit1, diag_unit2]
+# Update the unitlits to include the diagonal units list
+unitlist = row_units + column_units + square_units + diag_unit
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
-peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
+peers = dict((s, set(sum(units[s], [])) - set([s])) for s in boxes)
+
 
 def assign_value(values, box, value):
     """
@@ -45,34 +52,41 @@ def naked_twins(values):
 
     # 1. Iterate over all units
     for unit in unitlist:
-        # 2. For each box in unit
-        for u in unit:
-            curr_value = values[u]
-            # Naked twins only works for twins, so we skip values that are not a pair
-            if len(curr_value) != 2:
+        # 2. For each box in a unit
+        for box in unit:
+            box_value = values[box]
+            # Naked twins only works for 'twins', so we skip boxes with possible values that are not a pair
+            if len(box_value) != 2:
                 continue
+
             has_naked_twin = False
 
-            # See if any other box in the same unit shares the same set of possible values
-            for uu in unit:
-                # Skip the unit for which we're looking for twins
-                if u == uu:
+            # 3. See if any other box in the same unit shares the same set of possible values
+            # The bool above is used to store if we have seen such a box in the unit
+            for b in unit:
+                # Skip the box for which we're looking for twins
+                if box == b:
                     continue
-                val = values[uu]
-                if val == curr_value:
-                    has_naked_twin = True
 
-            # 3. If two or more boxes in the same unit shares the same set of possible values =>
+                # Compare the list of possible values for box 'b', with the list of possible values for the current
+                # 'box' we're looking at
+                # If the values match, we have a naked twin, and so we set the bool, and break out of the for-loop
+                if values[b] == box_value:
+                    has_naked_twin = True
+                    break
+
+            # 4. If two boxes in the same unit share the same set of possible values =>
             if has_naked_twin:
-                # Remove each possible value from the possible values of all other boxes in the same unit
-                for uu in unit:
-                    val = values[uu]
-                    # Only prune values, from a box that is not a naked twin
-                    if val != curr_value:
-                        for v in curr_value:
+                # Remove each possible value of the naked twin pair from the list of possible values of all other
+                # boxes in the same unit
+                for b in unit:
+                    val = values[b]
+                    # Only prune values, for a box that is not a naked twins
+                    if val != box_value:
+                        for v in box_value:
                             if v in val:
                                 val = val.replace(v, "")
-                        values[uu] = val
+                        values[b] = val
 
     return values
 
@@ -155,6 +169,9 @@ def reduce_puzzle(values):
         solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
         values = eliminate(values)
         values = only_choice(values)
+
+        # Propagate constraint about naked twins
+        values = naked_twins(values)
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
         stalled = solved_values_before == solved_values_after
         if len([box for box in values.keys() if len(values[box]) == 0]):
@@ -180,6 +197,7 @@ def search(values):
         if attempt:
             return attempt
 
+
 def solve(grid):
     """
     Find the solution to a Sudoku grid.
@@ -195,11 +213,11 @@ def solve(grid):
 
 if __name__ == '__main__':
     diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
-    display(solve(diag_sudoku_grid))
+    assignments = solve(diag_sudoku_grid)
+    display(assignments)
 
     try:
         from visualize import visualize_assignments
-
         visualize_assignments(assignments)
 
     except SystemExit:
