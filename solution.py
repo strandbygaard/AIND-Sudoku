@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(level=logging.ERROR)
+
 assignments = []
 
 
@@ -40,6 +43,55 @@ def assign_value(values, box, value):
         assignments.append(values.copy())
     return values
 
+def find_twins(values, unit, box):
+    """Find naked twin values for a given box in a givin unit.
+    :param values: the values dictionary
+    :param unit: the unit to look at
+    :param box: the box to look at
+    :return: True if a naked twin is found for this box. False otherwise.
+    """
+    box_value = values[box]
+    # Naked twins only works for 'twins', so we skip boxes with possible values that are not a pair
+    if len(box_value) != 2:
+        return False
+
+    # 3. See if any other box in the same unit shares the same set of possible values
+    # The bool above is used to store if we have seen such a box in the unit
+    for b in unit:
+        # Skip the box for which we're looking for twins
+        if box == b:
+            continue
+
+        # Compare the list of possible values for box 'b', with the list of possible values for the current
+        # 'box' we're looking at
+        # If the values match, we have a naked twin, and so we set the bool, and break out of the for-loop
+        if values[b] == box_value:
+            return True
+
+    return False
+
+
+def eliminate_twins(values,unit,box):
+    """ Prune naked twin values from possible values of other boxes in the same unit
+
+    :param values: the values dictionary
+    :param unit: the unit to look at
+    :param box: the box containing a naked twin pair to be pruned from all other boxes in the same unit
+    :return: the values dictionary with the naked twins eliminated from peers.
+    """
+    # Remove each possible value of the naked twin pair from the list of possible values of all other
+    # boxes in the same unit
+    for b in unit:
+        box_value = values[box]
+        val = values[b]
+        # Only prune values, for a box that is not a naked twins
+        if val != box_value:
+            for v in box_value:
+                if v in val:
+                    val = val.replace(v, "")
+            assign_value(values, b, val)
+
+    return values
 
 def naked_twins(values):
     """Eliminate values using the naked twins strategy.
@@ -54,39 +106,9 @@ def naked_twins(values):
     for unit in unitlist:
         # 2. For each box in a unit
         for box in unit:
-            box_value = values[box]
-            # Naked twins only works for 'twins', so we skip boxes with possible values that are not a pair
-            if len(box_value) != 2:
-                continue
-
-            has_naked_twin = False
-
-            # 3. See if any other box in the same unit shares the same set of possible values
-            # The bool above is used to store if we have seen such a box in the unit
-            for b in unit:
-                # Skip the box for which we're looking for twins
-                if box == b:
-                    continue
-
-                # Compare the list of possible values for box 'b', with the list of possible values for the current
-                # 'box' we're looking at
-                # If the values match, we have a naked twin, and so we set the bool, and break out of the for-loop
-                if values[b] == box_value:
-                    has_naked_twin = True
-                    break
-
-            # 4. If two boxes in the same unit share the same set of possible values =>
-            if has_naked_twin:
-                # Remove each possible value of the naked twin pair from the list of possible values of all other
-                # boxes in the same unit
-                for b in unit:
-                    val = values[b]
-                    # Only prune values, for a box that is not a naked twins
-                    if val != box_value:
-                        for v in box_value:
-                            if v in val:
-                                val = val.replace(v, "")
-                        values[b] = val
+            if find_twins(values, unit, box):
+                # 4. If two boxes in the same unit share the same set of possible values =>
+                values = eliminate_twins(values,unit,box)
 
     return values
 
@@ -137,7 +159,8 @@ def eliminate(values):
     for box in solved_values:
         digit = values[box]
         for peer in peers[box]:
-            values[peer] = values[peer].replace(digit, '')
+            assign_value(values, peer, values[peer].replace(digit, ''))
+            #values[peer] = values[peer].replace(digit, '')
     return values
 
 
@@ -151,7 +174,8 @@ def only_choice(values):
         for digit in '123456789':
             dplaces = [box for box in unit if digit in values[box]]
             if len(dplaces) == 1:
-                values[dplaces[0]] = digit
+                #values[dplaces[0]] = digit
+                assign_value(values, dplaces[0], digit)
     return values
 
 
@@ -172,6 +196,7 @@ def reduce_puzzle(values):
 
         # Propagate constraint about naked twins
         values = naked_twins(values)
+
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
         stalled = solved_values_before == solved_values_after
         if len([box for box in values.keys() if len(values[box]) == 0]):
@@ -213,9 +238,7 @@ def solve(grid):
 
 if __name__ == '__main__':
     diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
-    assignments = solve(diag_sudoku_grid)
-    display(assignments)
-
+    display(solve(diag_sudoku_grid))
     try:
         from visualize import visualize_assignments
         visualize_assignments(assignments)
